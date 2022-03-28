@@ -68,13 +68,13 @@ def get_auto_label(api):
         if label["name"] == "Automated":
             return label["id"]
 
-def get_todoist_items(project_id, api):
+def get_todoist_items(project_id, api, auto_label):
     #2022-01-27 23:59
     names = []
     times = []
     items = []
     for item in api.projects.get_data(project_id)["items"]:
-        if item["labels"] == get_auto_label(api):
+        if item["labels"] == auto_label:
             #date = arrow.get(item["due"]["string"], formats).strftime("%m/%d/%Y %I:%M%p")
             date = arrow.get(item["due"]["string"], formats).format(formats[0])
             name = item["content"]
@@ -84,7 +84,7 @@ def get_todoist_items(project_id, api):
     return names,times, items
 
 
-def process_lists(ics, todoist, id, api):
+def process_lists(ics, todoist, id, api, auto_label):
     names, times, items = todoist
     for name, time, description in ics:
         try:
@@ -119,7 +119,7 @@ def process_lists(ics, todoist, id, api):
             "lang": "en",
             "is_recurring": False
             }
-            item = api.items.add(name, labels=get_auto_label(api), due=due_date, auto_reminder=True, project_id=id)
+            item = api.items.add(name, labels=auto_label, due=due_date, auto_reminder=True, project_id=id)
             note = api.notes.add(item["id"], description)
 
 #Get a list of completed items so they won't be added again
@@ -137,8 +137,9 @@ def process_account(api_key, links):
     api = TodoistAPI(api_key)
     api.sync()
     projects = get_todoist_projects(api)
+    auto_label = get_auto_label(api)
     for key in links:
-        items = get_todoist_items(projects[key], api)
+        items = get_todoist_items(projects[key], api, auto_label)
         if items == ([], [], []): # If there aren't any items currently listed
             continue
         events = get_cal_events(links[key])
